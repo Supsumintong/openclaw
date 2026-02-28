@@ -239,6 +239,22 @@ describe("applyPluginAutoEnable", () => {
 
       expect(result.config.plugins?.entries?.["unknown-chan"]?.enabled).toBe(true);
     });
+
+    it("writes only channels.<id>.enabled for catalog channel when pluginId === channelId (#29632)", () => {
+      // Feishu etc.: plugin id equals channel id. Avoid writing plugins.entries.<id>
+      // so duplicate plugin detection does not conflict with channels.feishu pairing.
+      const result = applyPluginAutoEnable({
+        config: {
+          channels: { feishu: { appId: "cli_foo", appSecret: "bar" } },
+        },
+        env: {},
+        manifestRegistry: makeRegistry([{ id: "feishu", channels: ["feishu"] }]),
+      });
+
+      expect(result.config.channels?.feishu?.enabled).toBe(true);
+      expect(result.config.plugins?.entries?.feishu).toBeUndefined();
+      expect(result.changes.join("\n")).toContain("feishu configured, enabled automatically.");
+    });
   });
 
   describe("preferOver channel prioritization", () => {

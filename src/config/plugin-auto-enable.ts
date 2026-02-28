@@ -422,11 +422,21 @@ function shouldSkipPreferredPluginAutoEnable(
   return false;
 }
 
-function registerPluginEntry(cfg: OpenClawConfig, pluginId: string): OpenClawConfig {
+/** True when this plugin is enabled only because its channel is configured (catalog channel, not built-in). */
+function isCatalogChannelEnableReason(reason: string, pluginId: string): boolean {
+  return reason === `${pluginId} configured` && normalizeChatChannelId(pluginId) === null;
+}
+
+function registerPluginEntry(
+  cfg: OpenClawConfig,
+  pluginId: string,
+  options?: { channelOnly?: boolean },
+): OpenClawConfig {
   const builtInChannelId = normalizeChatChannelId(pluginId);
-  if (builtInChannelId) {
+  const channelKey = builtInChannelId ?? (options?.channelOnly ? pluginId : null);
+  if (channelKey) {
     const channels = cfg.channels as Record<string, unknown> | undefined;
-    const existing = channels?.[builtInChannelId];
+    const existing = channels?.[channelKey];
     const existingRecord =
       existing && typeof existing === "object" && !Array.isArray(existing)
         ? (existing as Record<string, unknown>)
@@ -435,7 +445,7 @@ function registerPluginEntry(cfg: OpenClawConfig, pluginId: string): OpenClawCon
       ...cfg,
       channels: {
         ...cfg.channels,
-        [builtInChannelId]: {
+        [channelKey]: {
           ...existingRecord,
           enabled: true,
         },
@@ -503,6 +513,7 @@ export function applyPluginAutoEnable(params: {
     }
     const allow = next.plugins?.allow;
     const allowMissing = Array.isArray(allow) && !allow.includes(entry.pluginId);
+    const catalogChannelOnly = isCatalogChannelEnableReason(entry.reason, entry.pluginId);
     const alreadyEnabled =
       builtInChannelId != null
         ? (() => {
@@ -517,11 +528,26 @@ export function applyPluginAutoEnable(params: {
             }
             return (channelConfig as { enabled?: unknown }).enabled === true;
           })()
-        : next.plugins?.entries?.[entry.pluginId]?.enabled === true;
+        : catalogChannelOnly
+          ? (() => {
+              const channels = next.channels as Record<string, unknown> | undefined;
+              const channelConfig = channels?.[entry.pluginId];
+              if (
+                !channelConfig ||
+                typeof channelConfig !== "object" ||
+                Array.isArray(channelConfig)
+              ) {
+                return false;
+              }
+              return (channelConfig as { enabled?: unknown }).enabled === true;
+            })()
+          : next.plugins?.entries?.[entry.pluginId]?.enabled === true;
     if (alreadyEnabled && !allowMissing) {
       continue;
     }
-    next = registerPluginEntry(next, entry.pluginId);
+    next = registerPluginEntry(next, entry.pluginId, {
+      channelOnly: catalogChannelOnly || undefined,
+    });
     if (allowMissing || !builtInChannelId) {
       next = ensurePluginAllowlisted(next, entry.pluginId);
     }
