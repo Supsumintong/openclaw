@@ -1623,6 +1623,17 @@ async function dispatchDiscordCommandInteraction(params: {
       onModelSelected,
     },
   });
+
+  if (!didReply && !suppressReplies) {
+    await safeDiscordInteractionCall("interaction ack", async () => {
+      const payload = { content: "✓" };
+      if (preferFollowUp) {
+        await interaction.followUp(payload);
+        return;
+      }
+      await interaction.reply(payload);
+    });
+  }
 }
 
 async function deliverDiscordInteractionReply(params: {

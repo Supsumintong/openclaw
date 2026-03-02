@@ -41,6 +41,11 @@ export type FollowupRun = {
   originatingThreadId?: string | number;
   /** Chat type for context-aware threading (e.g., DM vs channel). */
   originatingChatType?: string;
+  /**
+   * When true, bypass messaging tool reply suppression for this run
+   * while keeping duplicate filtering behavior.
+   */
+  skipMessagingToolReplySuppression?: boolean;
   run: {
     agentId: string;
     agentDir: string;

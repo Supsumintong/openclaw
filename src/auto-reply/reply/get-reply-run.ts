@@ -459,6 +459,10 @@ export async function runPreparedReply(
     isNewSession,
   });
   const authProfileIdSource = sessionEntry?.authProfileOverrideSource;
+  const isDiscordNativeSlashContext =
+    commandSource === "native" &&
+    typeof sessionCtx.To === "string" &&
+    sessionCtx.To.startsWith("slash:");
   const followupRun = {
     prompt: queuedBody,
     messageId: sessionCtx.MessageSidFull ?? sessionCtx.MessageSid,
@@ -470,6 +474,7 @@ export async function runPreparedReply(
     originatingAccountId: ctx.AccountId,
     originatingThreadId: ctx.MessageThreadId,
     originatingChatType: ctx.ChatType,
+    skipMessagingToolReplySuppression: isDiscordNativeSlashContext,
     run: {
       agentId,
       agentDir,

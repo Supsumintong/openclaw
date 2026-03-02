@@ -275,7 +275,7 @@ export function createFollowupRunner(params: {
         payloads: dedupedPayloads,
         sentMediaUrls: runResult.messagingToolSentMediaUrls ?? [],
       });
-      const suppressMessagingToolReplies = shouldSuppressMessagingToolReplies({
+      const shouldSuppressForMessagingTool = shouldSuppressMessagingToolReplies({
         messageProvider: resolveOriginMessageProvider({
           originatingChannel: queued.originatingChannel,
           provider: queued.run.messageProvider,
@@ -289,6 +289,9 @@ export function createFollowupRunner(params: {
           accountId: queued.run.agentAccountId,
         }),
       });
+      const suppressMessagingToolReplies = queued.skipMessagingToolReplySuppression
+        ? false
+        : shouldSuppressForMessagingTool;
       const finalPayloads = suppressMessagingToolReplies ? [] : mediaFilteredPayloads;
 
       if (finalPayloads.length === 0) {

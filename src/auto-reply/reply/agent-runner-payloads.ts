@@ -40,6 +40,7 @@ export function buildReplyPayloads(params: {
   originatingChannel?: OriginatingChannelType;
   originatingTo?: string;
   accountId?: string;
+  skipMessagingToolReplySuppression?: boolean;
 }): { replyPayloads: ReplyPayload[]; didLogHeartbeatStrip: boolean } {
   let didLogHeartbeatStrip = params.didLogHeartbeatStrip;
   const sanitizedPayloads = params.isHeartbeat
@@ -91,7 +92,7 @@ export function buildReplyPayloads(params: {
     !params.blockReplyPipeline?.isAborted();
   const messagingToolSentTexts = params.messagingToolSentTexts ?? [];
   const messagingToolSentTargets = params.messagingToolSentTargets ?? [];
-  const suppressMessagingToolReplies = shouldSuppressMessagingToolReplies({
+  const shouldSuppressForMessagingTool = shouldSuppressMessagingToolReplies({
     messageProvider: resolveOriginMessageProvider({
       originatingChannel: params.originatingChannel,
       provider: params.messageProvider,
@@ -104,12 +105,15 @@ export function buildReplyPayloads(params: {
       originatingAccountId: params.accountId,
     }),
   });
+  const suppressMessagingToolReplies = params.skipMessagingToolReplySuppression
+    ? false
+    : shouldSuppressForMessagingTool;
   // Only dedupe against messaging tool sends for the same origin target.
   // Cross-target sends (for example posting to another channel) must not
   // suppress the current conversation's final reply.
   // If target metadata is unavailable, keep legacy dedupe behavior.
   const dedupeMessagingToolPayloads =
-    suppressMessagingToolReplies || messagingToolSentTargets.length === 0;
+    shouldSuppressForMessagingTool || messagingToolSentTargets.length === 0;
   const dedupedPayloads = dedupeMessagingToolPayloads
     ? filterMessagingToolDuplicates({
         payloads: replyTaggedPayloads,
